@@ -1,6 +1,7 @@
 import pandas as pd
 import random as rd
 import numpy as np
+from itertools import combinations
 from math import ceil, floor
 
 
@@ -68,3 +69,35 @@ def random_setify(df, train_pct, valid_pct):
             test_df = test_df.append(df.loc[i])
 
     return train_df, valid_df, test_df
+
+
+def generate_1x1_classifiers(df, states):
+    """
+    """
+
+    classifiers = {}
+
+    # each classifier decides between two states
+    for comb in combinations(states, 2):
+
+        # get for each combination
+        states = [f'state_{j}' for j in comb]
+
+        # leave only inputs of desired states
+        classifier = [
+            df.query(f'{s}==1').drop(
+                [j for j in df.columns if 'state' in j], axis=1
+            ) for s in states
+        ]
+
+        # first state is labeled as 1 and second as -1
+        classifier[0]['state'] = (classifier[0].shape[0])*[1]
+        classifier[1]['state'] = (classifier[1].shape[0])*[-1]
+
+        # join states
+        classifier = classifier[0].append(classifier[1])
+
+        # append result
+        classifiers[f'{comb[0]}_{comb[1]}'] = classifier
+
+    return classifiers

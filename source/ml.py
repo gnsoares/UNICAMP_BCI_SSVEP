@@ -73,6 +73,10 @@ def random_setify(df, train_pct, valid_pct):
 
 def generate_1x1_classifiers(df, states):
     """
+    Generate 1x1 classifiers based in df.
+    @param df pandas dataframe with states as dummy variables;
+    @param states states to be classified against each other;
+    @return dict[states: classifier].
     """
 
     classifiers = {}
@@ -101,3 +105,48 @@ def generate_1x1_classifiers(df, states):
         classifiers[f'{comb[0]}_{comb[1]}'] = classifier
 
     return classifiers
+
+
+def drop_states(df, states_to_drop):
+    """
+    Drop states not needed from df.
+    @param df pandas dataframe with states as dummy variables;
+    @param states_to_drop states not needed;
+    @return df without row or columns corresponding to states to drop.
+    """
+
+    # get state columns
+    state_columns = [i for i in df.columns if 'state' in i]
+    drop = [f'state_{s}' for s in states_to_drop]
+
+    # initialize result
+    new = df.copy()
+
+    # drop not needed rows and columns
+    for column in drop:
+        new = new.drop(new.query(f'{column}==1').index, axis=0)
+    new = new.drop(drop, axis=1)
+
+    # restack dummy variables
+    new_state_columns = [i for i in new.columns if 'state' in i]
+    states = [i[len('state_'):] for i in new_state_columns]
+    states_df = new[new_state_columns]
+    states_series = pd.Series(
+        pd.Categorical(
+            states_df.stack()[states_df.stack() != 0].index.get_level_values(1)
+        )
+    )
+
+    # clean state identifier
+    for i in states:
+        states_series = states_series.replace(f'state_{i}', i)
+
+    # remove dummies
+    new = new.drop(
+        [i for i in new.columns if 'state' in i], axis=1
+    ).reset_index(drop=True)
+
+    # append result
+    new['state'] = states_series
+
+    return new
